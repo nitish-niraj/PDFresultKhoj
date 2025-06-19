@@ -1,35 +1,125 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>SSC Result Search</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Search SSC GD results instantly with PDFResultKhoj. Find your roll number, name, or father's name in large PDF files.">
+    <meta name="keywords" content="SSC GD, result search, PDFResultKhoj, job results, India">
+    <meta name="author" content="Your Name">
+    <title>PDFResultKhoj - Search SSC Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h2>Search SSC Result</h2>
-  <form method="post">
-    <input type="text" name="roll"   placeholder="Enter Roll Number (optional)">
-    <input type="text" name="name"   placeholder="Enter Candidate's Name (optional)">
-    <input type="text" name="father" placeholder="Enter Father's Name (optional)">
-    <button type="submit">Search</button>
-  </form>
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+                  <img src="{{ url_for('static', filename='img/logo.png') }}" alt="PDFResultKhoj Logo" class="logo">
+            <div class="header-text">
+                <h1>PDFResultKhoj</h1>
+                <p class="tagline">Find Your Name in Giant PDF, Instantly!</p>
+            </div>
+        </div>
+    </header>
 
-  {% if results %}
-    <h3>Found {{ results|length }} record(s):</h3>
-    {% for r in results %}
-      <div class="result">
-        <strong>Roll:</strong> {{ r["ROLL"] }}<br>
-        <strong>Name:</strong> {{ r["NAME"] }}<br>
-        <strong>Father:</strong> {{ r["FATHERNAME"] }}<br>
-        <strong>Mother:</strong> {{ r["MOTHERNAME"] }}<br>
-        <strong>Category Code:</strong> {{ r["CATEGORY"] }}<br>
-        <strong>Source File:</strong> {{ r["SOURCE_FILE"] }}
-      </div>
-    {% endfor %}
-  {% elif request.method == 'POST' %}
-    <p>No matching record found.</p>
-  {% endif %}
+    <!-- Navbar -->
+    <nav class="navbar">
+        <ul class="nav-menu">
+            <li><a href="#" class="active">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><a href="#help">Help</a></li>
+        </ul>
+        <div class="nav-toggle">☰</div>
+    </nav>
 
-  <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <!-- Main Content -->
+    <main class="container">
+        <div class="search-form">
+            <select id="searchType" aria-label="Select search type">
+                <option value="roll">Roll Number</option>
+                <option value="name">Name</option>
+                <option value="father_name">Father's Name</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="Enter Roll Number, Name, or Father's Name" aria-label="Search input">
+            <button onclick="search()">Search</button>
+        </div>
+        <div id="spinner" class="spinner" role="alert" aria-live="polite"></div>
+        <div id="result" class="result" role="region"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2025 PDFResultKhoj | <a href="https://pdfresultkhoj.com">pdfresultkhoj.com</a></p>
+            <p><a href="https://github.com/your-username/ssc-gd-search">GitHub</a> | <a href="mailto:support@pdfresultkhoj.com">support@pdfresultkhoj.com</a></p>
+            <p>Follow us: <a href="#">Facebook</a> | <a href="#">Twitter</a></p>
+        </div>
+    </footer>
+
+      <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <script>
+        // Enhanced search function with navbar toggle
+        async function search() {
+            const input = document.getElementById('searchInput').value.trim();
+            const searchType = document.getElementById('searchType').value;
+            const resultDiv = document.getElementById('result');
+            const spinner = document.getElementById('spinner');
+
+            if (!input) {
+                resultDiv.textContent = 'Please enter a search term.';
+                resultDiv.className = 'result error';
+                return;
+            }
+            if (searchType === 'roll' && !/^\d{10}$/.test(input)) {
+                resultDiv.textContent = 'Roll number must be a 10-digit number.';
+                resultDiv.className = 'result error';
+                return;
+            }
+
+            spinner.style.display = 'block';
+            resultDiv.textContent = ''; // Clear previous results
+            resultDiv.className = 'result'; // Reset class
+
+            try {
+                const response = await fetch(`/search?query=${encodeURIComponent(input)}&search_type=${searchType}`);
+                const data = await response.json();
+
+                spinner.style.display = 'none';
+
+                if (data.error) {
+                    resultDiv.textContent = data.error;
+                    resultDiv.className = 'result error';
+                } else if (data.status === 'found') {
+                    // Build the detailed success message using a template literal for better readability
+                    resultDiv.innerHTML = `
+                        <strong>Congratulations! You are selected!</strong><br><br>
+                        <strong>Roll:</strong> ${data.roll}<br>
+                        <strong>Name:</strong> ${data.name}<br>
+                        <strong>Father's Name:</strong> ${data.father_name}<br>
+                        ${data.mother_name ? `<strong>Mother's Name:</strong> ${data.mother_name}<br>` : ''}
+                        ${data.category ? `<strong>Category Code:</strong> ${data.category}<br>` : ''}
+                        ${data.source_file ? `<strong>Source File:</strong> ${data.source_file}` : ''}
+                    `;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.textContent = `Sorry, "${input}" was not found in the ${searchType.replace('_', ' ')} list.`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                spinner.style.display = 'none';
+                resultDiv.textContent = 'Error occurred while searching. Please try again.';
+                resultDiv.className = 'result error';
+            }
+        }
+
+        // Navbar toggle for mobile
+        const navToggle = document.querySelector('.nav-toggle');
+        const navMenu = document.querySelector('.nav-menu');
+        navToggle.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+        });
+    </script>
 </body>
 </html>
